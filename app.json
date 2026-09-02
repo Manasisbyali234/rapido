@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "Rapido Clone",
+    "slug": "rapido-clone",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#FFC400"
+    },
+    "android": {
+      "package": "com.example.rapidoclone"
+    },
+    "ios": {
+      "bundleIdentifier": "com.example.rapidoclone"
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "ff7887e5-e222-437a-b101-8ecc7f150950"
+      }
+    }
+  }
+}
