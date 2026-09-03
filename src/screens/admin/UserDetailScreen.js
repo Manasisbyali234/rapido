@@ -1,33 +1,47 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, radius, shadow } from '../../theme/theme';
+import { colors, radius, shadow, sf, type } from '../../theme/theme';
+import { adminGetUserRides } from '../../utils/api';
+
+const STATUS_COLOR = {
+  searching: colors.info, accepted: colors.yellow, otp_verified: colors.yellow,
+  in_progress: colors.bike, completed: colors.success, cancelled: colors.danger,
+};
 
 export default function UserDetailScreen({ route, navigation }) {
   const { user } = route.params;
   const [status, setStatus] = useState(user.status);
+  const [rides, setRides] = useState([]);
+  const [ridesLoading, setRidesLoading] = useState(true);
+
+  useEffect(() => {
+    adminGetUserRides(user._id || user.id)
+      .then(setRides)
+      .catch(() => setRides([]))
+      .finally(() => setRidesLoading(false));
+  }, []);
 
   const isActive = status === 'active';
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={18} color={colors.black} />
-        </TouchableOpacity>
         <View style={styles.avatarWrap}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{user.name.split(' ').map(n => n[0]).join('')}</Text>
+            <Text style={styles.avatarText}>{(user.name || '?').split(' ').map(n => n[0]).join('')}</Text>
           </View>
           <View style={[styles.statusRing, { borderColor: isActive ? colors.success : colors.danger }]} />
         </View>
-        <Text style={styles.name}>{user.name}</Text>
-        <Text style={styles.phone}>+91 {user.phone}</Text>
+        <Text style={styles.name}>{user.name || 'Unknown'}</Text>
+        <Text style={styles.phone}>+91 {user.phone || '—'}</Text>
         <View style={[styles.statusBadge, { backgroundColor: isActive ? '#0D2A1A' : '#2A0D0D', borderColor: isActive ? '#1E3A1E' : '#3A1E1E' }]}>
           <View style={[styles.statusDot, { backgroundColor: isActive ? colors.success : colors.danger }]} />
           <Text style={[styles.statusText, { color: isActive ? colors.success : colors.danger }]}>
-            {status.charAt(0).toUpperCase() + status.slice(1)}
+            {(status || '').charAt(0).toUpperCase() + (status || '').slice(1)}
           </Text>
         </View>
       </View>
@@ -35,9 +49,9 @@ export default function UserDetailScreen({ route, navigation }) {
       {/* Stats */}
       <View style={styles.statsRow}>
         {[
-          { label: 'Total Rides', value: user.rides, icon: 'car-outline', color: '#3B82F6' },
-          { label: 'Rating', value: `${user.rating}★`, icon: 'star-outline', color: colors.yellow },
-          { label: 'Member Since', value: user.joined.split('-')[0], icon: 'calendar-outline', color: colors.bike },
+          { label: 'Total Rides', value: user.rides ?? '—', icon: 'car-outline', color: '#3B82F6' },
+          { label: 'Rating', value: user.rating ? `${user.rating}★` : '—', icon: 'star-outline', color: colors.yellow },
+          { label: 'Member Since', value: user.joined ? user.joined.split('-')[0] : (user.createdAt ? new Date(user.createdAt).getFullYear() : '—'), icon: 'calendar-outline', color: colors.bike },
         ].map(s => (
           <View key={s.label} style={styles.statCard}>
             <View style={[styles.statIcon, { backgroundColor: s.color + '22' }]}>
@@ -55,8 +69,8 @@ export default function UserDetailScreen({ route, navigation }) {
         {[
           { label: 'Full Name', value: user.name, icon: 'person-outline' },
           { label: 'Phone', value: `+91 ${user.phone}`, icon: 'call-outline' },
-          { label: 'Joined', value: user.joined, icon: 'calendar-outline' },
-          { label: 'Total Rides', value: `${user.rides} rides completed`, icon: 'car-outline' },
+          { label: 'Email', value: user.email || '—', icon: 'mail-outline' },
+          { label: 'Joined', value: user.joined || (user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-IN') : '—'), icon: 'calendar-outline' },
         ].map(row => (
           <View key={row.label} style={styles.infoRow}>
             <View style={styles.infoIcon}>
@@ -65,23 +79,6 @@ export default function UserDetailScreen({ route, navigation }) {
             <View style={{ flex: 1 }}>
               <Text style={styles.infoLabel}>{row.label}</Text>
               <Text style={styles.infoValue}>{row.value}</Text>
-            </View>
-          </View>
-        ))}
-      </View>
-
-      {/* Activity timeline */}
-      <View style={styles.infoCard}>
-        <Text style={styles.sectionTitle}>Recent Activity</Text>
-        {['Completed ride to Indiranagar', 'Booked Auto from Koramangala', 'Rated captain 5★', 'Account created'].map((act, i) => (
-          <View key={i} style={styles.timelineRow}>
-            <View style={styles.timelineCol}>
-              <View style={[styles.timelineDot, { backgroundColor: i === 0 ? colors.yellow : '#333' }]} />
-              {i < 3 && <View style={styles.timelineLine} />}
-            </View>
-            <View style={{ flex: 1, paddingBottom: 16 }}>
-              <Text style={styles.timelineText}>{act}</Text>
-              <Text style={styles.timelineTime}>{i === 0 ? 'Today' : i === 1 ? 'Yesterday' : `${i + 1} days ago`}</Text>
             </View>
           </View>
         ))}
@@ -103,15 +100,54 @@ export default function UserDetailScreen({ route, navigation }) {
         </Text>
       </TouchableOpacity>
 
+      {/* Ride History */}
+      <View style={styles.infoCard}>
+        <Text style={styles.sectionTitle}>Ride History</Text>
+        {ridesLoading ? (
+          <ActivityIndicator color={colors.yellow} style={{ paddingVertical: 16 }} />
+        ) : rides.length === 0 ? (
+          <Text style={[type.small, { textAlign: 'center', paddingVertical: 12 }]}>No rides found</Text>
+        ) : rides.map(ride => {
+          const sc = STATUS_COLOR[ride.status] || colors.grey;
+          const isActive = ['accepted', 'otp_verified', 'in_progress'].includes(ride.status);
+          return (
+            <View key={ride._id} style={styles.rideRow}>
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                  <Text style={styles.rideType}>{ride.rideType?.toUpperCase()}</Text>
+                  <View style={[styles.rideBadge, { backgroundColor: sc + '22', borderColor: sc }]}>
+                    <Text style={[styles.rideBadgeText, { color: sc }]}>{ride.status.replace('_', ' ')}</Text>
+                  </View>
+                </View>
+                <Text style={type.small} numberOfLines={1}>📍 {ride.pickup}</Text>
+                <Text style={type.small} numberOfLines={1}>🏁 {ride.drop}</Text>
+                <Text style={[type.small, { marginTop: 2 }]}>₹{ride.fare} · {ride.createdAt ? new Date(ride.createdAt).toLocaleDateString('en-IN') : ''}</Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.trackBtn, { borderColor: isActive ? colors.yellow : colors.border }]}
+                onPress={() => navigation.navigate('AdminUserRideTracking', { ride })}
+              >
+                <Ionicons name={isActive ? 'navigate' : 'eye-outline'} size={14} color={isActive ? colors.yellowDark : colors.grey} />
+                <Text style={[styles.trackBtnText, { color: isActive ? colors.yellowDark : colors.grey }]}>
+                  {isActive ? 'Track' : 'View'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          );
+        })}
+      </View>
+
       <View style={{ height: 40 }} />
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: colors.bg },
   container: { flex: 1, backgroundColor: colors.bg },
-  header: { alignItems: 'center', backgroundColor: colors.white, paddingTop: 56, paddingBottom: 28, borderBottomWidth: 1, borderBottomColor: colors.border },
-  backBtn: { position: 'absolute', top: 56, left: 18, width: 36, height: 36, borderRadius: 10, backgroundColor: colors.greyBg, justifyContent: 'center', alignItems: 'center' },
+  header: { alignItems: 'center', backgroundColor: colors.white, paddingTop: 16, paddingBottom: 28, borderBottomWidth: 1, borderBottomColor: colors.border },
+  backBtn: { position: 'absolute', top: 16, left: 18, width: 36, height: 36, borderRadius: 10, backgroundColor: colors.greyBg, justifyContent: 'center', alignItems: 'center' },
   avatarWrap: { position: 'relative', marginBottom: 12 },
   avatar: { width: 76, height: 76, borderRadius: 38, backgroundColor: '#3B82F633', justifyContent: 'center', alignItems: 'center' },
   avatarText: { fontSize: 26, fontWeight: '900', color: '#3B82F6' },
@@ -132,12 +168,12 @@ const styles = StyleSheet.create({
   infoIcon: { width: 30, height: 30, borderRadius: 8, backgroundColor: colors.greyBg, justifyContent: 'center', alignItems: 'center' },
   infoLabel: { fontSize: 10, fontWeight: '600', color: colors.grey, marginBottom: 2 },
   infoValue: { fontSize: 13, fontWeight: '600', color: colors.black },
-  timelineRow: { flexDirection: 'row', gap: 12 },
-  timelineCol: { alignItems: 'center', width: 16 },
-  timelineDot: { width: 10, height: 10, borderRadius: 5, marginTop: 3 },
-  timelineLine: { width: 1.5, flex: 1, backgroundColor: colors.border, marginTop: 4 },
-  timelineText: { fontSize: 13, fontWeight: '600', color: colors.black },
-  timelineTime: { fontSize: 11, color: colors.grey, marginTop: 2 },
   actionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginHorizontal: 14, marginTop: 4, paddingVertical: 15, borderRadius: radius.pill, borderWidth: 1 },
   actionText: { fontSize: 15, fontWeight: '800' },
+  rideRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, borderTopWidth: 1, borderTopColor: colors.border },
+  rideType: { fontSize: sf(12), fontWeight: '800', color: colors.black },
+  rideBadge: { borderRadius: radius.pill, paddingHorizontal: 8, paddingVertical: 2, borderWidth: 1 },
+  rideBadgeText: { fontSize: sf(10), fontWeight: '700', textTransform: 'capitalize' },
+  trackBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1.5, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 6 },
+  trackBtnText: { fontSize: sf(11), fontWeight: '700' },
 });

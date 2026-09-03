@@ -1,29 +1,45 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { View, Text, TextInput, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, radius, type, shadow } from '../../theme/theme';
-import { users } from '../../data/dummyData';
+import { colors, radius, type, shadow, sf } from '../../theme/theme';
+import { getAllUsers } from '../../utils/authStore';
+import * as api from '../../utils/api';
 
 const AVATAR_COLORS = ['#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981'];
 
 export default function UsersListScreen({ navigation }) {
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('all');
+  const [allUsers, setAllUsers] = useState([]);
+
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
+  async function loadUsers() {
+    try {
+      const data = await api.adminGetUsers();
+      setAllUsers(data.map(u => ({ ...u, id: u._id || u.id })));
+    } catch {
+      getAllUsers().then(setAllUsers);
+    }
+  }
 
   const filtered = useMemo(() => {
-    return users.filter(u => {
-      const matchQ = u.name.toLowerCase().includes(query.toLowerCase()) || u.phone.includes(query);
+    return allUsers.filter(u => {
+      const matchQ = (u.name || '').toLowerCase().includes(query.toLowerCase()) || (u.phone || '').includes(query);
       const matchF = filter === 'all' || u.status === filter;
       return matchQ && matchF;
     });
-  }, [query, filter]);
+  }, [query, filter, allUsers]);
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.title}>Users</Text>
         <View style={styles.countBadge}>
-          <Text style={styles.countText}>{users.length}</Text>
+          <Text style={styles.countText}>{allUsers.length}</Text>
         </View>
       </View>
 
@@ -71,12 +87,12 @@ export default function UsersListScreen({ navigation }) {
           >
             <View style={[styles.avatar, { backgroundColor: AVATAR_COLORS[index % AVATAR_COLORS.length] + '33' }]}>
               <Text style={[styles.avatarText, { color: AVATAR_COLORS[index % AVATAR_COLORS.length] }]}>
-                {item.name.split(' ').map(n => n[0]).join('')}
+                {(item.name || '?').split(' ').map(n => n[0]).join('')}
               </Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.name}>{item.name}</Text>
-              <Text style={styles.sub}>+91 {item.phone} · {item.rides} rides</Text>
+              <Text style={styles.name}>{item.name || 'Unknown'}</Text>
+              <Text style={styles.sub}>+91 {item.phone || '—'} · {item.rides ?? 0} rides</Text>
             </View>
             <View style={[styles.badge, item.status === 'active' ? styles.badgeActive : styles.badgeBlocked]}>
               <View style={[styles.badgeDot, { backgroundColor: item.status === 'active' ? colors.success : colors.danger }]} />
@@ -93,13 +109,13 @@ export default function UsersListScreen({ navigation }) {
           </View>
         }
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingTop: 56, paddingHorizontal: 18, paddingBottom: 16 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingTop: 16, paddingHorizontal: 18, paddingBottom: 16 },
   title: { fontSize: 24, fontWeight: '900', color: colors.black },
   countBadge: { backgroundColor: colors.greyBg, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 3 },
   countText: { fontSize: 13, fontWeight: '700', color: colors.charcoal },

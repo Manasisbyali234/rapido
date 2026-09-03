@@ -1,25 +1,35 @@
 import React, { useState, useMemo } from 'react';
 import { View, Text, TextInput, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, radius, shadow } from '../../theme/theme';
-import { drivers } from '../../data/dummyData';
+import { colors, radius, shadow, sf } from '../../theme/theme';
+import { getCaptains } from '../../utils/authStore';
+import * as api from '../../utils/api';
 
 export default function DriversListScreen({ navigation }) {
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('all');
+  const [allDrivers, setAllDrivers] = useState([]);
+
+  React.useEffect(() => {
+    api.adminGetDrivers ? api.adminGetDrivers()
+      .then(data => setAllDrivers(data.map(d => ({ ...d, id: d._id || d.id }))))
+      .catch(() => getCaptains().then(setAllDrivers))
+      : getCaptains().then(setAllDrivers);
+  }, []);
 
   const filtered = useMemo(() => {
-    return drivers.filter(d => {
-      const matchQ = d.name.toLowerCase().includes(query.toLowerCase()) || d.number.toLowerCase().includes(query.toLowerCase());
+    return allDrivers.filter(d => {
+      const matchQ = (d.name || '').toLowerCase().includes(query.toLowerCase()) || (d.vehicleNumber || d.number || '').toLowerCase().includes(query.toLowerCase());
       const matchF = filter === 'all' || d.status === filter;
       return matchQ && matchF;
     });
-  }, [query, filter]);
+  }, [query, filter, allDrivers]);
 
-  const onlineCount = drivers.filter(d => d.status === 'online').length;
+  const onlineCount = allDrivers.filter(d => d.status === 'online').length;
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <Text style={styles.title}>Captains</Text>
@@ -28,7 +38,7 @@ export default function DriversListScreen({ navigation }) {
             <Text style={styles.onlineText}>{onlineCount} online</Text>
           </View>
         </View>
-        <Text style={styles.sub}>{drivers.length} total captains registered</Text>
+        <Text style={styles.sub}>{allDrivers.length} total captains registered</Text>
       </View>
 
       <View style={styles.searchRow}>
@@ -83,7 +93,7 @@ export default function DriversListScreen({ navigation }) {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.name}>{item.name}</Text>
-              <Text style={styles.vehicleText}>{item.vehicle} · {item.number}</Text>
+              <Text style={styles.vehicleText}>{item.vehicle || item.vehicleType} · {item.vehicleNumber || item.number}</Text>
               <View style={styles.metaRow}>
                 <Ionicons name="star" size={10} color={colors.yellow} />
                 <Text style={styles.metaText}>{item.rating} · {item.rides} rides</Text>
@@ -106,13 +116,13 @@ export default function DriversListScreen({ navigation }) {
           </View>
         }
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
-  header: { paddingTop: 56, paddingHorizontal: 18, paddingBottom: 16 },
+  header: { paddingTop: 16, paddingHorizontal: 18, paddingBottom: 16 },
   headerTop: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 },
   title: { fontSize: 24, fontWeight: '900', color: colors.black },
   onlineBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: colors.successBg, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: '#BBF7D0' },

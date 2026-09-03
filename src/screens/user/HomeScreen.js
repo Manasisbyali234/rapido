@@ -1,42 +1,65 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, useWindowDimensions, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, radius, type, shadow } from '../../theme/theme';
+import * as Location from 'expo-location';
+import { colors, radius, type, shadow, sf } from '../../theme/theme';
 import { rideTypes } from '../../data/dummyData';
 import MapView from '../../components/MapView';
+import { getCurrentUser } from '../../utils/authStore';
 
 export default function HomeScreen({ navigation }) {
   const [pickup, setPickup] = useState('Koramangala 5th Block');
   const [drop, setDrop] = useState('');
   const [selected, setSelected] = useState('auto');
   const [dropFocused, setDropFocused] = useState(false);
+  const [userName, setUserName] = useState('');
+  const [locLoading, setLocLoading] = useState(false);
+  const { height } = useWindowDimensions();
+
+  useEffect(() => {
+    getCurrentUser().then(u => u && setUserName(u.name));
+    fetchCurrentLocation();
+  }, []);
+
+  async function fetchCurrentLocation() {
+    setLocLoading(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') { setLocLoading(false); return; }
+      const { coords } = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      const res = await fetch(`https://api.4ceps.com/api/location/reverse-geocode?lat=${coords.latitude}&lng=${coords.longitude}`);
+      const data = await res.json();
+      const label = data?.display_name || data?.address?.road || data?.name || `${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)}`;
+      setPickup(label);
+    } catch {
+      // keep default pickup if anything fails
+    }
+    setLocLoading(false);
+  }
 
   const selectedRide = rideTypes.find(r => r.id === selected);
-
   const rideAccent = { bike: colors.bike, auto: colors.yellow, cab_economy: colors.cab, cab_premium: colors.cab };
   const rideBg = { bike: colors.bikeBg, auto: colors.autoBg, cab_economy: colors.cabBg, cab_premium: colors.cabBg };
+  const mapHeight = Math.max(160, height * 0.3);
 
   return (
-    <View style={styles.container}>
-      <View style={styles.map}>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={[styles.map, { height: mapHeight }]}>
         <MapView
           style={StyleSheet.absoluteFill}
           pickup={{ lat: 12.9352, lng: 77.6245, label: pickup || 'Pickup' }}
+          drop={drop ? { lat: 12.9716, lng: 77.5946, label: drop } : null}
         />
-        <TouchableOpacity style={[styles.menuBtn, shadow.card]}>
-          <Ionicons name="menu" size={20} color={colors.black} />
-        </TouchableOpacity>
         <View style={[styles.mapBadge, shadow.sm]}>
           <View style={styles.onlineDot} />
-          <Text style={styles.mapBadgeText}>Live tracking</Text>
+          <Text style={styles.mapBadgeText}>Hubli Rider</Text>
         </View>
       </View>
 
-      {/* Bottom sheet */}
       <View style={[styles.sheet, shadow.lg]}>
-        <View style={styles.sheetHandle} />
+        {userName ? <Text style={styles.welcome}>Welcome, {userName} 👋</Text> : null}
 
-        {/* Location inputs */}
         <View style={[styles.locBox, shadow.sm]}>
           <View style={styles.locRow}>
             <View style={styles.dotGreen} />
@@ -47,6 +70,12 @@ export default function HomeScreen({ navigation }) {
               placeholder="Pickup location"
               placeholderTextColor={colors.greyLight}
             />
+            {locLoading
+              ? <ActivityIndicator size="small" color={colors.yellow} />
+              : <TouchableOpacity onPress={fetchCurrentLocation}>
+                  <Ionicons name="locate" size={16} color={colors.yellow} />
+                </TouchableOpacity>
+            }
           </View>
           <View style={styles.locDivider}>
             <View style={styles.locDividerLine} />
@@ -84,7 +113,7 @@ export default function HomeScreen({ navigation }) {
                 activeOpacity={0.8}
               >
                 <View style={[styles.rideIconWrap, { backgroundColor: isActive ? (rideBg[r.id] || colors.yellowLight) : colors.greyBg }]}>
-                  <Text style={styles.rideIcon}>{r.icon}</Text>
+                  <Ionicons name={r.ionicon} size={22} color={isActive ? (rideAccent[r.id] || colors.yellow) : colors.grey} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={type.h3}>{r.label}</Text>
@@ -112,33 +141,27 @@ export default function HomeScreen({ navigation }) {
           {drop && <Ionicons name="arrow-forward" size={18} color={colors.black} />}
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
-  map: { height: '34%', backgroundColor: '#C8DDD0', overflow: 'hidden' },
-  menuBtn: {
-    position: 'absolute', top: 48, left: 18,
-    width: 40, height: 40, borderRadius: 12,
-    backgroundColor: colors.white,
-    justifyContent: 'center', alignItems: 'center',
-  },
+  map: { backgroundColor: '#C8DDD0', overflow: 'hidden' },
   mapBadge: {
-    position: 'absolute', top: 52, right: 18,
+    position: 'absolute', top: 12, right: 18,
     flexDirection: 'row', alignItems: 'center', gap: 5,
     backgroundColor: colors.white, borderRadius: radius.pill,
     paddingHorizontal: 10, paddingVertical: 5,
   },
   onlineDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.success },
-  mapBadgeText: { fontSize: 11, fontWeight: '600', color: colors.black },
+  mapBadgeText: { fontSize: sf(11), fontWeight: '600', color: colors.black },
   sheet: {
     flex: 1, backgroundColor: colors.white,
     marginTop: -20, borderTopLeftRadius: 28, borderTopRightRadius: 28,
     paddingHorizontal: 18, paddingTop: 10, paddingBottom: 16,
   },
-  sheetHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: 'center', marginBottom: 14 },
+  welcome: { fontSize: sf(15), fontWeight: '700', color: colors.black, marginBottom: 10 },
   locBox: {
     borderWidth: 1.5, borderColor: colors.border,
     borderRadius: radius.md, marginBottom: 16,
@@ -147,7 +170,7 @@ const styles = StyleSheet.create({
   locRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 11, gap: 10 },
   dotGreen: { width: 9, height: 9, borderRadius: 5, backgroundColor: colors.success },
   dotRed: { width: 9, height: 9, borderRadius: 5, backgroundColor: colors.danger },
-  locInput: { flex: 1, fontSize: 14, fontWeight: '600', color: colors.black },
+  locInput: { flex: 1, fontSize: sf(14), fontWeight: '600', color: colors.black },
   locDivider: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14 },
   locDividerLine: { flex: 1, height: 1, backgroundColor: colors.border },
   swapIcon: { marginHorizontal: 8 },
@@ -159,9 +182,8 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   rideIconWrap: { width: 44, height: 44, borderRadius: radius.sm, justifyContent: 'center', alignItems: 'center' },
-  rideIcon: { fontSize: 24 },
   priceCol: { alignItems: 'flex-end', gap: 4 },
-  ridePrice: { fontSize: 15, fontWeight: '800', color: colors.black },
+  ridePrice: { fontSize: sf(15), fontWeight: '800', color: colors.black },
   selectedDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.yellow },
   bookBtn: {
     flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8,
@@ -169,5 +191,5 @@ const styles = StyleSheet.create({
     paddingVertical: 15, marginTop: 4,
   },
   bookBtnDisabled: { backgroundColor: colors.greyBg },
-  bookBtnText: { fontSize: 15, fontWeight: '800', color: colors.black },
+  bookBtnText: { fontSize: sf(15), fontWeight: '800', color: colors.black },
 });

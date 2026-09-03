@@ -1,18 +1,20 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, useWindowDimensions, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, radius, type, shadow } from '../../theme/theme';
+import { colors, radius, type, shadow, sf } from '../../theme/theme';
 import MapView from '../../components/MapView';
 
 export default function RideTrackingScreen({ route, navigation }) {
   const { ride, pickup, drop, driver } = route.params;
   const [status, setStatus] = useState('arriving');
+  const { height } = useWindowDimensions();
+  const mapHeight = Math.max(160, height * 0.28);
   const otp = '4821';
 
   return (
-    <View style={styles.container}>
-      {/* Map */}
-      <View style={styles.map}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <View style={[styles.map, { height: mapHeight }]}>
         <MapView
           style={StyleSheet.absoluteFill}
           pickup={{ lat: 12.9352, lng: 77.6245, label: pickup }}
@@ -29,11 +31,10 @@ export default function RideTrackingScreen({ route, navigation }) {
         </View>
       </View>
 
-      {/* Sheet */}
-      <View style={[styles.sheet, shadow.lg]}>
+      <ScrollView style={[styles.sheet, shadow.lg]} showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 18, paddingTop: 10, paddingBottom: 16 }}>
         <View style={styles.sheetHandle} />
 
-        {/* Status + OTP */}
         <View style={styles.statusRow}>
           <View style={{ flex: 1 }}>
             <Text style={[type.label, { marginBottom: 4 }]}>
@@ -49,7 +50,6 @@ export default function RideTrackingScreen({ route, navigation }) {
           </View>
         </View>
 
-        {/* Driver card */}
         <View style={[styles.driverCard, shadow.card]}>
           <View style={styles.driverAvatar}>
             <Text style={styles.driverAvatarText}>{driver.name[0]}</Text>
@@ -64,7 +64,6 @@ export default function RideTrackingScreen({ route, navigation }) {
           </View>
         </View>
 
-        {/* Actions */}
         <View style={styles.actionRow}>
           {[
             { icon: 'call', label: 'Call', color: colors.black },
@@ -78,7 +77,6 @@ export default function RideTrackingScreen({ route, navigation }) {
           ))}
         </View>
 
-        {/* Trip info */}
         <View style={styles.tripBox}>
           <View style={styles.tripRow}>
             <View style={styles.tripDotGreen} />
@@ -106,31 +104,30 @@ export default function RideTrackingScreen({ route, navigation }) {
             {status === 'arriving' ? 'Simulate: Start Ride' : `Simulate: Complete · ₹${ride.price}`}
           </Text>
         </TouchableOpacity>
-      </View>
-    </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
-  map: { height: '30%', backgroundColor: '#C8DDD0', overflow: 'hidden' },
+  map: { backgroundColor: '#C8DDD0', overflow: 'hidden' },
   backBtn: {
-    position: 'absolute', top: 48, left: 18,
+    position: 'absolute', top: 12, left: 18,
     width: 38, height: 38, borderRadius: 12,
     backgroundColor: colors.white,
     justifyContent: 'center', alignItems: 'center',
   },
   etaBadge: {
-    position: 'absolute', top: 52, right: 18,
+    position: 'absolute', top: 12, right: 18,
     flexDirection: 'row', alignItems: 'center', gap: 5,
     backgroundColor: colors.white, borderRadius: radius.pill,
     paddingHorizontal: 10, paddingVertical: 5,
   },
-  etaText: { fontSize: 11, fontWeight: '700', color: colors.black },
+  etaText: { fontSize: sf(11), fontWeight: '700', color: colors.black },
   sheet: {
-    flex: 1, backgroundColor: colors.white,
+    backgroundColor: colors.white,
     marginTop: -20, borderTopLeftRadius: 28, borderTopRightRadius: 28,
-    padding: 18, paddingTop: 10,
   },
   sheetHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: 'center', marginBottom: 16 },
   statusRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 14 },
@@ -139,8 +136,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14, paddingVertical: 8, alignItems: 'center',
     borderWidth: 1.5, borderColor: colors.yellow,
   },
-  otpLabel: { fontSize: 9, fontWeight: '700', color: colors.yellowDark, letterSpacing: 0.5 },
-  otpValue: { fontSize: 20, fontWeight: '900', color: colors.black, letterSpacing: 2 },
+  otpLabel: { fontSize: sf(9), fontWeight: '700', color: colors.yellowDark, letterSpacing: 0.5 },
+  otpValue: { fontSize: sf(20), fontWeight: '900', color: colors.black, letterSpacing: 2 },
   driverCard: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     backgroundColor: colors.greyBg, borderRadius: radius.md,
@@ -151,13 +148,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.black,
     justifyContent: 'center', alignItems: 'center',
   },
-  driverAvatarText: { fontSize: 18, fontWeight: '800', color: colors.yellow },
+  driverAvatarText: { fontSize: sf(18), fontWeight: '800', color: colors.yellow },
   ratingBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     backgroundColor: colors.yellowLight, paddingHorizontal: 8, paddingVertical: 4,
     borderRadius: radius.pill,
   },
-  ratingText: { fontWeight: '700', fontSize: 12, color: colors.black },
+  ratingText: { fontWeight: '700', fontSize: sf(12), color: colors.black },
   actionRow: { flexDirection: 'row', gap: 8, marginBottom: 14 },
   actionBtn: {
     flex: 1, flexDirection: 'row', gap: 5,
@@ -167,7 +164,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
   },
   actionBtnDanger: { borderColor: colors.dangerBg, backgroundColor: colors.dangerBg },
-  actionText: { fontWeight: '700', fontSize: 12 },
+  actionText: { fontWeight: '700', fontSize: sf(12) },
   tripBox: { backgroundColor: colors.greyBg, borderRadius: radius.md, padding: 14, marginBottom: 14 },
   tripRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   tripDotGreen: { width: 9, height: 9, borderRadius: 5, backgroundColor: colors.success, marginTop: 4 },
@@ -177,5 +174,5 @@ const styles = StyleSheet.create({
     backgroundColor: colors.yellow, borderRadius: radius.pill,
     paddingVertical: 15, alignItems: 'center',
   },
-  primaryBtnText: { fontWeight: '800', fontSize: 15, color: colors.black },
+  primaryBtnText: { fontWeight: '800', fontSize: sf(15), color: colors.black },
 });

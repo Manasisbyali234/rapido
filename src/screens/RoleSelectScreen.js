@@ -1,27 +1,28 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, radius, type, shadow } from '../theme/theme';
+import { colors, radius, type, shadow, sf, sw, sh } from '../theme/theme';
 
 const options = [
-  { key: 'User',   title: 'Rider',   desc: 'Book bike, auto or cab rides',  icon: 'person',            accent: colors.yellow,  bg: colors.yellowLight },
+  { key: 'User',   title: 'Rider',   desc: 'Book bike, auto or cab rides',  icon: 'bicycle',           accent: colors.yellow,  bg: colors.yellowLight },
   { key: 'Driver', title: 'Captain', desc: 'Go online and earn money',       icon: 'bicycle',           accent: colors.bike,    bg: colors.bikeBg },
   { key: 'Admin',  title: 'Admin',   desc: 'Manage platform & analytics',    icon: 'shield-checkmark',  accent: colors.cab,     bg: colors.cabBg },
 ];
 
 export default function RoleSelectScreen({ navigation }) {
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.yellow} />
-
+      <ScrollView contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false}>
       <View style={styles.hero}>
         <View style={styles.logoRow}>
           <View style={styles.logoMark}>
             <Ionicons name="flash" size={20} color={colors.black} />
           </View>
-          <Text style={styles.logoText}>Rapydo</Text>
+          <Text style={styles.logoText}>Hubli Rider</Text>
         </View>
-        <Text style={styles.heroTitle}>Fast rides,{'\n'}anywhere.</Text>
+        <Text style={styles.heroTitle}>Hubli Rider{'\n'}Fast rides!</Text>
         <View style={styles.tagRow}>
           {['Bike', 'Auto', 'Cab'].map(t => (
             <View key={t} style={styles.tag}><Text style={styles.tagText}>{t}</Text></View>
@@ -52,8 +53,9 @@ export default function RoleSelectScreen({ navigation }) {
         ))}
       </View>
 
-      <Text style={styles.footer}>Demo build · dummy data only</Text>
-    </View>
+      <Text style={styles.footer}>Hubli Rider · Demo build</Text>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -61,9 +63,9 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   hero: {
     backgroundColor: colors.yellow,
-    paddingTop: 64,
-    paddingBottom: 40,
-    paddingHorizontal: 24,
+    paddingTop: sh(24),
+    paddingBottom: sh(40),
+    paddingHorizontal: sw(24),
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
   },
@@ -73,12 +75,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.black,
     justifyContent: 'center', alignItems: 'center',
   },
-  logoText: { fontSize: 20, fontWeight: '900', color: colors.black, letterSpacing: -0.5 },
-  heroTitle: { fontSize: 34, fontWeight: '900', color: colors.black, letterSpacing: -1, lineHeight: 40, marginBottom: 16 },
+  logoText: { fontSize: sf(20), fontWeight: '900', color: colors.black, letterSpacing: -0.5 },
+  heroTitle: { fontSize: sf(34), fontWeight: '900', color: colors.black, letterSpacing: -1, lineHeight: sf(40), marginBottom: 16 },
   tagRow: { flexDirection: 'row', gap: 8 },
   tag: { backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 4 },
   tagText: { fontSize: 12, fontWeight: '700', color: colors.black },
-  body: { padding: 20, gap: 12, flex: 1 },
+  body: { padding: sw(20), gap: 12, flexGrow: 1 },
   sectionLabel: { ...type.label, marginBottom: 4, marginTop: 4 },
   card: {
     flexDirection: 'row', alignItems: 'center', gap: 14,

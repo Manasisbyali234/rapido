@@ -1,0 +1,7 @@
+{
+  "name": "rapido-clone-frontend",
+  "version": "1.0.0",
+  "description": "React Native / Expo frontend for Rapido-clone",
+  "main": "src/navigation/RootNavigator.js",
+  "private": true
+}
