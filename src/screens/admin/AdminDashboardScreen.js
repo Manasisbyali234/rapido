@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors, radius, sf } from '../../theme/theme';
-import { getCaptains, logout, getAdminUser, getAllUsers } from '../../utils/authStore';
+import { getCaptains, logout, getAdminUser } from '../../utils/authStore';
 import * as api from '../../utils/api';
 
 
@@ -32,21 +32,34 @@ export default function AdminDashboardScreen({ navigation }) {
   const [totalUsers, setTotalUsers] = useState(0);
   const [onlineDrivers, setOnlineDrivers] = useState([]);
   const [totalDrivers, setTotalDrivers] = useState(0);
+  const [ridesToday, setRidesToday] = useState(0);
 
   useFocusEffect(useCallback(() => {
-    getCaptains().then(list => {
-      setPendingCount(list.filter(c => c.status === 'pending').length);
-      setOnlineDrivers(list.filter(c => c.status === 'online'));
-      setTotalDrivers(list.length);
-    });
-    getAdminUser().then(a => a && setAdminName(a.name || a.email || 'Admin'));
-    api.adminGetStats()
-      .then(s => setTotalUsers(s.totalUsers))
-      .catch(() => getAllUsers().then(list => setTotalUsers(list.length)));
+    async function load() {
+      try {
+        const [captainList, stats] = await Promise.all([
+          api.adminGetDrivers(),
+          api.adminGetStats(),
+        ]);
+        setPendingCount(captainList.filter(c => c.status === 'pending').length);
+        setOnlineDrivers(captainList.filter(c => c.isOnline || c.status === 'online'));
+        setTotalDrivers(captainList.length);
+        setTotalUsers(stats.totalUsers ?? 0);
+        setRidesToday(stats.ridesToday ?? 0);
+      } catch (e) {
+        console.warn('[Dashboard] API error:', e.message);
+      }
+      try {
+        const adminUser = await getAdminUser();
+        if (adminUser) setAdminName(adminUser.name || adminUser.email || 'Admin');
+      } catch (_) {}
+    }
+    load();
   }, []));
 
   async function handleLogout() {
     await logout();
+    await api.removeToken();
     navigation.getParent()?.reset({ index: 0, routes: [{ name: 'AdminLogin' }] });
   }
 
@@ -89,10 +102,10 @@ export default function AdminDashboardScreen({ navigation }) {
 
         {/* Stats grid */}
         <View style={styles.statsGrid}>
-          <StatCard label="Total Riders"   value={totalUsers}         icon="people"           accent="#3B82F6" delta="+3 today" />
-          <StatCard label="Captains"       value={totalDrivers}        icon="bicycle"          accent={colors.bike} />
-          <StatCard label="Online Now"     value={onlineDrivers.length} icon="radio-button-on"  accent={colors.success} delta="active" />
-          <StatCard label="Rides Today"    value="—" icon="car" accent={colors.yellow} />
+          <StatCard label="Total Riders"   value={totalUsers}          icon="people"           accent="#3B82F6" delta="+3 today" />
+          <StatCard label="Captains"        value={totalDrivers}         icon="bicycle"          accent={colors.bike} />
+          <StatCard label="Online Now"      value={onlineDrivers.length} icon="radio-button-on"  accent={colors.success} delta="active" />
+          <StatCard label="Rides Today"     value={ridesToday}           icon="car"              accent={colors.yellow} />
         </View>
 
         <View style={styles.section}>
@@ -175,6 +188,13 @@ const styles = StyleSheet.create({
   sectionCard: { backgroundColor: colors.white, borderRadius: radius.md, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: colors.border },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
   sectionTitle: { fontSize: 13, fontWeight: '700', color: colors.charcoal },
+  seeAll: { fontSize: 12, fontWeight: '700', color: colors.info },
+  driverRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderTopWidth: 1, borderTopColor: colors.border },
+  driverAvatar: { width: 38, height: 38, borderRadius: 19, backgroundColor: colors.yellowLight, justifyContent: 'center', alignItems: 'center' },
+  driverAvatarText: { fontSize: 15, fontWeight: '800', color: colors.yellowDark },
+  driverName: { fontSize: 13, fontWeight: '700', color: colors.black },
+  driverSub: { fontSize: 11, color: colors.grey, marginTop: 1 },
+  onlinePill: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.success },
   logoutBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: 'center', paddingVertical: 14, marginBottom: 8, borderWidth: 1, borderColor: colors.dangerBg, borderRadius: radius.pill, backgroundColor: colors.dangerBg },
   logoutText: { fontSize: 14, fontWeight: '700', color: colors.danger },
 });

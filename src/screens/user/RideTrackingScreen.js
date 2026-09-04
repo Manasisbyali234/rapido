@@ -1,16 +1,50 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, useWindowDimensions, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, type, shadow, sf } from '../../theme/theme';
 import MapView from '../../components/MapView';
 
+// Waypoints simulating driver moving toward pickup then toward drop
+const ARRIVING_WAYPOINTS = [
+  { lat: 12.9430, lng: 77.6230 },
+  { lat: 12.9415, lng: 77.6218 },
+  { lat: 12.9400, lng: 77.6200 },
+  { lat: 12.9385, lng: 77.6180 },
+  { lat: 12.9370, lng: 77.6160 },
+  { lat: 12.9352, lng: 77.6245 }, // pickup
+];
+const ONGOING_WAYPOINTS = [
+  { lat: 12.9352, lng: 77.6245 },
+  { lat: 12.9450, lng: 77.6150 },
+  { lat: 12.9530, lng: 77.6080 },
+  { lat: 12.9620, lng: 77.6010 },
+  { lat: 12.9716, lng: 77.5946 }, // drop
+];
+
 export default function RideTrackingScreen({ route, navigation }) {
   const { ride, pickup, drop, driver } = route.params;
   const [status, setStatus] = useState('arriving');
+  const [driverPos, setDriverPos] = useState(ARRIVING_WAYPOINTS[0]);
+  const waypointIdx = useRef(0);
   const { height } = useWindowDimensions();
-  const mapHeight = Math.max(160, height * 0.28);
+  const mapHeight = Math.max(220, height * 0.42);
   const otp = '4821';
+
+  useEffect(() => {
+    const waypoints = status === 'arriving' ? ARRIVING_WAYPOINTS : ONGOING_WAYPOINTS;
+    waypointIdx.current = 0;
+    setDriverPos(waypoints[0]);
+    const interval = setInterval(() => {
+      waypointIdx.current += 1;
+      if (waypointIdx.current >= waypoints.length) {
+        clearInterval(interval);
+        return;
+      }
+      setDriverPos(waypoints[waypointIdx.current]);
+    }, 2200);
+    return () => clearInterval(interval);
+  }, [status]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -19,8 +53,9 @@ export default function RideTrackingScreen({ route, navigation }) {
           style={StyleSheet.absoluteFill}
           pickup={{ lat: 12.9352, lng: 77.6245, label: pickup }}
           drop={{ lat: 12.9716, lng: 77.5946, label: drop }}
-          driverLat={status === 'arriving' ? 12.9400 : 12.9550}
-          driverLng={status === 'arriving' ? 77.6200 : 77.6100}
+          driverLat={driverPos.lat}
+          driverLng={driverPos.lng}
+          animateDriver
         />
         <TouchableOpacity style={[styles.backBtn, shadow.card]} onPress={() => navigation.popToTop()}>
           <Ionicons name="arrow-back" size={18} color={colors.black} />

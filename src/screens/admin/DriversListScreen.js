@@ -3,7 +3,6 @@ import { View, Text, TextInput, FlatList, StyleSheet, TouchableOpacity } from 'r
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, shadow, sf } from '../../theme/theme';
-import { getCaptains } from '../../utils/authStore';
 import * as api from '../../utils/api';
 
 export default function DriversListScreen({ navigation }) {
@@ -12,10 +11,9 @@ export default function DriversListScreen({ navigation }) {
   const [allDrivers, setAllDrivers] = useState([]);
 
   React.useEffect(() => {
-    api.adminGetDrivers ? api.adminGetDrivers()
+    api.adminGetDrivers()
       .then(data => setAllDrivers(data.map(d => ({ ...d, id: d._id || d.id }))))
-      .catch(() => getCaptains().then(setAllDrivers))
-      : getCaptains().then(setAllDrivers);
+      .catch(e => console.warn('[Drivers] load error:', e.message));
   }, []);
 
   const filtered = useMemo(() => {

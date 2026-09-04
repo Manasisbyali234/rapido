@@ -80,7 +80,7 @@ const adminStats = () => ({
 });
 
 // ─── CONFIG ───────────────────────────────────────────────────
-const BASE_URL = 'http://192.168.0.109:3000';
+const BASE_URL = (typeof window !== 'undefined') ? 'http://localhost:3000' : 'http://192.168.68.119:3000';
 
 // ─── AUTH STORE ───────────────────────────────────────────────
 const K = { currentUser: 'hr_currentUser', users: 'hr_users', captains: 'hr_captains', adminToken: 'hr_adminToken' };
@@ -124,25 +124,29 @@ async function getCurrentUser() { return _get(K.currentUser); }
 async function logout() { await AsyncStorage.removeItem(K.currentUser); await AsyncStorage.removeItem(K.adminToken); }
 
 // Admin API helpers
-async function getAdminToken() { try { return await AsyncStorage.getItem(K.adminToken); } catch { return null; } }
+let _adminToken = null;
+async function getAdminToken() {
+  if (_adminToken) return _adminToken;
+  try { const t = await AsyncStorage.getItem(K.adminToken); if (t) _adminToken = t; return _adminToken; } catch { return null; }
+}
 async function adminRequest(path, options = {}) {
   const token = await getAdminToken();
-  const res = await fetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...options.headers },
-  });
+  const headers = { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+  const res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Request failed');
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
   return data;
 }
 async function adminLogin(email, password) {
   try {
-    const data = await fetch(`${BASE_URL}/auth/admin/login`, {
+    const res = await fetch(`${BASE_URL}/auth/admin/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: email.trim(), password }),
-    }).then(r => r.json());
-    if (!data.token) return false;
+    });
+    const data = await res.json();
+    if (!res.ok) return false;
+    _adminToken = data.token;
     await AsyncStorage.setItem(K.adminToken, data.token);
     return true;
   } catch { return false; }

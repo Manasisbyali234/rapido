@@ -3,7 +3,6 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, KeyboardAvo
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, sf } from '../../theme/theme';
-import { adminLogin } from '../../utils/authStore';
 import * as api from '../../utils/api';
 
 export default function AdminLoginScreen({ navigation }) {
@@ -14,18 +13,16 @@ export default function AdminLoginScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
 
   async function handleLogin() {
+    if (!email.trim() || !password) {
+      Alert.alert('Error', 'Please enter email and password.');
+      return;
+    }
     setLoading(true);
     try {
-      const res = await api.adminLogin(email.trim(), password);
-      await api.saveSession(res.token, { email: email.trim(), name: 'Admin', role: 'admin' });
+      await api.adminLogin(email.trim(), password);
       navigation.reset({ index: 0, routes: [{ name: 'AdminTabs' }] });
     } catch (e) {
-      const ok = await adminLogin(email.trim(), password);
-      if (ok) {
-        navigation.reset({ index: 0, routes: [{ name: 'AdminTabs' }] });
-      } else {
-        Alert.alert('Login Failed', e.message || 'Invalid credentials.');
-      }
+      Alert.alert('Login Failed', e.message || 'Invalid credentials.');
     }
     setLoading(false);
   }

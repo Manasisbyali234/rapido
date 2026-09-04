@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, sf } from '../../theme/theme';
+import { adminToggleSuspend } from '../../utils/api';
 
 export default function DriverDetailScreen({ route, navigation }) {
   const { driver } = route.params;
@@ -85,7 +86,14 @@ export default function DriverDetailScreen({ route, navigation }) {
           backgroundColor: isSuspended ? '#0D2A1A' : '#2A0D0D',
           borderColor: isSuspended ? '#1E3A1E' : '#3A1E1E',
         }]}
-        onPress={() => setStatus(s => s === 'suspended' ? 'online' : 'suspended')}
+        onPress={async () => {
+          try {
+            const updated = await adminToggleSuspend(driver._id || driver.id);
+            setStatus(updated.status);
+          } catch {
+            setStatus(s => s === 'suspended' ? 'active' : 'suspended');
+          }
+        }}
         activeOpacity={0.8}
       >
         <Ionicons
@@ -125,6 +133,10 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: 10, fontWeight: '500', color: colors.grey, textAlign: 'center' },
   card: { backgroundColor: colors.white, marginHorizontal: 14, borderRadius: radius.md, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: colors.border },
   sectionTitle: { fontSize: 12, fontWeight: '700', color: colors.grey, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 14 },
+  infoRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderTopWidth: 1, borderTopColor: colors.border },
+  infoIcon: { width: 30, height: 30, borderRadius: 8, backgroundColor: colors.greyBg, justifyContent: 'center', alignItems: 'center' },
+  infoLabel: { fontSize: 10, fontWeight: '600', color: colors.grey, marginBottom: 2 },
+  infoValue: { fontSize: 13, fontWeight: '600', color: colors.black },
   actionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginHorizontal: 14, marginTop: 4, paddingVertical: 15, borderRadius: radius.pill, borderWidth: 1 },
   actionText: { fontSize: 15, fontWeight: '800' },
 });

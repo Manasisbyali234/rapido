@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, shadow, sf, type } from '../../theme/theme';
-import { adminGetUserRides } from '../../utils/api';
+import { adminGetUserRides, adminToggleUserBlock } from '../../utils/api';
 
 const STATUS_COLOR = {
   searching: colors.info, accepted: colors.yellow, otp_verified: colors.yellow,
@@ -87,7 +87,14 @@ export default function UserDetailScreen({ route, navigation }) {
       {/* Action */}
       <TouchableOpacity
         style={[styles.actionBtn, { backgroundColor: isActive ? '#2A0D0D' : '#0D2A1A', borderColor: isActive ? '#3A1E1E' : '#1E3A1E' }]}
-        onPress={() => setStatus(s => s === 'active' ? 'blocked' : 'active')}
+        onPress={async () => {
+          try {
+            const updated = await adminToggleUserBlock(user._id || user.id);
+            setStatus(updated.status);
+          } catch {
+            setStatus(s => s === 'active' ? 'blocked' : 'active');
+          }
+        }}
         activeOpacity={0.8}
       >
         <Ionicons

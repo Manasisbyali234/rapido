@@ -6,37 +6,44 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors, radius, shadow, sf } from '../../theme/theme';
-import { getCaptains, updateCaptainStatus } from '../../utils/authStore';
+import * as api from '../../utils/api';
 
 const STATUS_COLORS = {
-  pending:  { bg: '#FEF9C3', text: '#92400E', dot: '#CA8A04' },
-  approved: { bg: colors.successBg, text: colors.success, dot: colors.success },
-  rejected: { bg: colors.dangerBg, text: colors.danger, dot: colors.danger },
+  pending:   { bg: '#FEF9C3', text: '#92400E', dot: '#CA8A04' },
+  approved:  { bg: colors.successBg, text: colors.success, dot: colors.success },
+  active:    { bg: colors.successBg, text: colors.success, dot: colors.success },
+  rejected:  { bg: colors.dangerBg, text: colors.danger, dot: colors.danger },
+  suspended: { bg: colors.dangerBg, text: colors.danger, dot: colors.danger },
 };
 
 export default function PendingCaptainsScreen({ navigation }) {
   const [captains, setCaptains] = useState([]);
 
   useFocusEffect(useCallback(() => {
-    getCaptains().then(setCaptains);
+    api.adminGetDrivers()
+      .then(data => setCaptains(data.map(c => ({ ...c, id: c._id || c.id }))))
+      .catch(e => console.warn('[Pending] load error:', e.message));
   }, []));
 
   async function handleAction(id, action) {
-    Alert.alert(
-      action === 'approved' ? 'Approve Captain' : 'Reject Captain',
-      `Are you sure you want to ${action === 'approved' ? 'approve' : 'reject'} this captain?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: action === 'approved' ? 'Approve' : 'Reject',
-          style: action === 'rejected' ? 'destructive' : 'default',
-          onPress: async () => {
-            await updateCaptainStatus(id, action);
-            setCaptains(prev => prev.map(c => c.id === id ? { ...c, status: action } : c));
-          },
+    const label = action === 'approve' ? 'Approve' : 'Reject';
+    Alert.alert(`${label} Captain`, `Are you sure?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: label,
+        style: action === 'reject' ? 'destructive' : 'default',
+        onPress: async () => {
+          try {
+            await api.adminCaptainAction(id, action);
+            setCaptains(prev => prev.map(c =>
+              c.id === id ? { ...c, status: action === 'approve' ? 'active' : 'suspended' } : c
+            ));
+          } catch (e) {
+            Alert.alert('Error', e.message);
+          }
         },
-      ]
-    );
+      },
+    ]);
   }
 
   return (
@@ -99,7 +106,7 @@ export default function PendingCaptainsScreen({ navigation }) {
                   <View style={styles.actions}>
                     <TouchableOpacity
                       style={[styles.actionBtn, styles.rejectBtn]}
-                      onPress={() => handleAction(c.id, 'rejected')}
+                      onPress={() => handleAction(c.id, 'reject')}
                       activeOpacity={0.8}
                     >
                       <Ionicons name="close" size={16} color={colors.danger} />
@@ -107,7 +114,7 @@ export default function PendingCaptainsScreen({ navigation }) {
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[styles.actionBtn, styles.approveBtn]}
-                      onPress={() => handleAction(c.id, 'approved')}
+                      onPress={() => handleAction(c.id, 'approve')}
                       activeOpacity={0.8}
                     >
                       <Ionicons name="checkmark" size={16} color={colors.black} />

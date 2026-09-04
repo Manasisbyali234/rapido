@@ -3,7 +3,6 @@ import { View, Text, TextInput, FlatList, StyleSheet, TouchableOpacity } from 'r
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, type, shadow, sf } from '../../theme/theme';
-import { getAllUsers } from '../../utils/authStore';
 import * as api from '../../utils/api';
 
 const AVATAR_COLORS = ['#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981'];
@@ -14,17 +13,10 @@ export default function UsersListScreen({ navigation }) {
   const [allUsers, setAllUsers] = useState([]);
 
   useEffect(() => {
-    loadUsers();
+    api.adminGetUsers()
+      .then(data => setAllUsers(data.map(u => ({ ...u, id: u._id || u.id }))))
+      .catch(e => console.warn('[Users] load error:', e.message));
   }, []);
-
-  async function loadUsers() {
-    try {
-      const data = await api.adminGetUsers();
-      setAllUsers(data.map(u => ({ ...u, id: u._id || u.id })));
-    } catch {
-      getAllUsers().then(setAllUsers);
-    }
-  }
 
   const filtered = useMemo(() => {
     return allUsers.filter(u => {
